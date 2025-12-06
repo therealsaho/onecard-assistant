@@ -1,0 +1,20 @@
+{
+  "user_id": "12345",
+  "name": "Rohan",
+  "email": "rohan@example.com",
+  "phone": "+91-98XXXXXXX",
+  "balance": 15000,
+  "credit_limit": 100000,
+  "available_credit": 85000,
+  "card_status": "active",
+  "reward_points": 5000,
+  "billing_cycle_start": "2025-11-08",
+  "statement_balance": 15000,
+  "minimum_due": 750,
+  "due_date": "2025-12-03",
+  "transactions": [
+    {"tx_id":"t1","date":"2025-11-10","amount":4000,"merchant":"ElectroMart","category":"Electronics"},
+    {"tx_id":"t2","date":"2025-11-14","amount":2000,"merchant":"CafeBrew","category":"Dining"},
+    {"tx_id":"t3","date":"2025-11-30","amount":9000,"merchant":"Rent","category":"Rent"}
+  ]
+}
