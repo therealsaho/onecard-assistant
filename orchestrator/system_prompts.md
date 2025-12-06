@@ -50,18 +50,25 @@ If the intent is `action`, also identify the `action_type` from the available to
 ```
 
 ## CONFIRMATION_PROMPT
-```text
-The user has requested a destructive action: {action_name}.
-You MUST ask for explicit confirmation.
 
-**Template:**
-"Are you sure you want to {action_description}? This action cannot be easily undone.
-Reply **YES** to confirm or any other text to cancel."
+Use this prompt whenever the Router determines the user intent is an action that modifies account state (e.g., block_card, dispute_transaction, unblock_card).
 
-**Rules:**
-- If the user replies exactly "YES" (case-insensitive), proceed.
-- If the user replies anything else, CANCEL the action.
-```
+Behavior rules:
+1. The assistant must require a single-word explicit confirmation token: `YES`. Accept only this token to proceed.
+2. The confirmation check is case-insensitive but must be a single token with no surrounding characters (e.g., `YES`, `yes`, `Yes` are valid; `YES.` or ` YES` or `Y E S` are NOT valid).
+3. If the user replies with `YES`, the assistant proceeds to invoke the requested tool and returns the tool output as a human-friendly message plus an audit event.
+4. If the user replies with any other text (including `Y`, `YESS`, `NO`, `CANCEL`, emojis, or silence), the assistant cancels the action, explicitly states the action was cancelled, and provides safe next steps (contact support and how to re-initiate).
+5. The assistant MUST re-confirm the action intent in the confirmation prompt (one short sentence restating the requested action) and include clear instructions on how to confirm.
+6. Do **not** accept implicit confirmations (e.g., follow-up messages that do not exactly match `YES`).
+7. Log an audit placeholder in the response indicating the confirmation result (e.g., `audit_event: {confirmation: "YES"}` or `audit_event: {confirmation: "CANCELLED"}`).
+
+Exact user-facing confirmation prompt text (copy-paste ready):
+
+"You are about to **[ACTION_DESCRIPTION]** on account **[user_id]** (this will change your card/account state). Reply with the single word **YES** to confirm and proceed. Any other reply will cancel the request."
+
+**Edge cases & timing:**
+- If no reply is received within the session window, treat as cancelled. State this explicitly when cancelling.
+- If user replies with text containing `YES` but not as a single token (e.g., "YES please"), treat as CANCEL and instruct the user to reply with exactly `YES`.
 
 ## RAG_PROMPT
 ```text
