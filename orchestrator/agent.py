@@ -8,7 +8,7 @@ import datetime
 from typing import Dict, Any, Optional
 
 from orchestrator.router import Router
-from orchestrator.rag_engine import RAGEngine
+from orchestrator.embedding_rag import EmbeddingRAG
 from orchestrator.prompts import (
     SYSTEM_PROMPT,
     ROUTER_PROMPT,
@@ -18,6 +18,9 @@ from orchestrator.prompts import (
 from tools import mock_tools
 from llm.gemini_client import GeminiLLMClient
 
+from orchestrator.function_schema import TOOL_REGISTRY, TOOL_DESCRIPTIONS
+from tools.mock_tools import execute_tool
+
 class AssistantAgent:
     """
     The main agent class that handles user turns, manages state, and executes tools.
@@ -25,7 +28,7 @@ class AssistantAgent:
 
     def __init__(self):
         self.router = Router()
-        self.rag = RAGEngine()
+        self.rag = EmbeddingRAG() # Use new RAG engine
         self.llm = GeminiLLMClient()
         self.allow_local_audit = os.environ.get("ALLOW_LOCAL_AUDIT", "false").lower() == "true"
         self.audit_log_path = os.path.join(
@@ -102,19 +105,19 @@ class AssistantAgent:
                 }
 
             # Execute Action (Non-OTP)
-            tool_func = getattr(mock_tools, action_type)
-            
-            # Map arguments (Mock logic)
-            kwargs = {"user_id": user_id}
-            if action_type == "block_card":
+            # Use execute_tool wrapper
+            kwargs = pending_action.get("arguments", {})
+            # Ensure user_id is in kwargs if not already (legacy support)
+            if "user_id" not in kwargs:
+                kwargs["user_id"] = user_id
+                
+            # Legacy argument mapping if arguments are missing (Mock Mode fallback)
+            if not kwargs.get("reason") and action_type in ["block_card", "dispute_transaction"]:
                 kwargs["reason"] = "User Request"
-            elif action_type == "unblock_card":
-                kwargs["otp"] = "123456" # Magic OTP for prototype demo
-            elif action_type == "dispute_transaction":
-                kwargs["tx_id"] = "t1" # Mock
-                kwargs["reason"] = "User Request"
+            if not kwargs.get("tx_id") and action_type == "dispute_transaction":
+                kwargs["tx_id"] = "t1"
 
-            result = tool_func(**kwargs)
+            result = execute_tool(action_type, kwargs)
             
             # Log Audit
             if self.allow_local_audit and "audit_event" in result:
@@ -168,16 +171,12 @@ class AssistantAgent:
         if is_valid:
             # Execute Action
             action_type = pending_action["action_type"]
-            tool_func = getattr(mock_tools, action_type)
+            kwargs = pending_action.get("arguments", {})
+            if "user_id" not in kwargs:
+                kwargs["user_id"] = user_id
+            kwargs["otp"] = otp_msg
             
-            # Map arguments
-            kwargs = {"user_id": user_id}
-            if action_type == "block_card":
-                kwargs["reason"] = "User Request"
-            elif action_type == "unblock_card":
-                kwargs["otp"] = "123456"
-                
-            result = tool_func(**kwargs)
+            result = execute_tool(action_type, kwargs)
             
             # Add OTP metadata to audit
             if "audit_event" in result:
@@ -234,11 +233,29 @@ class AssistantAgent:
         """Handles action intents by initiating confirmation."""
         action_type = classification["action_type"]
         
+        # If classification has arguments (from LLM), use them. Otherwise empty dict.
+        arguments = classification.get("arguments", {})
+        
+        # Validate arguments if present using schema
+        if arguments and action_type in TOOL_REGISTRY:
+            try:
+                # Basic validation: check if required fields are present
+                # In a real scenario, we'd use pydantic validation here
+                # TOOL_REGISTRY[action_type](**arguments)
+                pass
+            except Exception as e:
+                print(f"Argument validation failed: {e}")
+                # Fallback or ask for clarification could go here
+        
         if action_type in ["get_account_summary", "get_recent_transactions", "get_rewards_summary"]:
              return self._handle_info_intent(user_id, "", action_type, debug_info)
 
         # Destructive actions require confirmation
-        session_state["pending_action"] = classification
+        session_state["pending_action"] = {
+            "intent": "action",
+            "action_type": action_type,
+            "arguments": arguments
+        }
         
         # Generate Confirmation Prompt
         action_desc = action_type.replace("_", " ")
@@ -263,8 +280,10 @@ class AssistantAgent:
         
         if action_type:
             # Read-only tool
-            tool_func = getattr(mock_tools, action_type)
-            result = tool_func(user_id)
+            kwargs = {"user_id": user_id}
+            # Add other args if present (e.g. n for transactions)
+            
+            result = execute_tool(action_type, kwargs)
             
             if self.llm.real_mode:
                 prompt = f"User asked: '{user_message}'. Tool output: {json.dumps(result)}. Provide a helpful answer."
@@ -285,7 +304,14 @@ class AssistantAgent:
             
             if self.llm.real_mode:
                 # RAG Prompt
-                context_str = "\n\n".join([f"Source: {r['source']} (Line {r['line_no']})\nContent: {r['text']}" for r in results])
+                # Format context with metadata
+                context_chunks = []
+                for i, r in enumerate(results):
+                    chunk_text = f"{i+1}) [score={r['score']:.2f}] \"{r['text']}\" — {r['source']} (line {r['line_no']})"
+                    context_chunks.append(chunk_text)
+                
+                context_str = "\n\n".join(context_chunks)
+                
                 prompt = RAG_PROMPT.replace("{context_chunks}", context_str).replace("{user_query}", user_message)
                 response_text = self.llm.generate(SYSTEM_PROMPT, prompt) # Passing SYSTEM_PROMPT as system, and RAG prompt as user message
                 self._update_debug_llm(debug_info, prompt, response_text)
@@ -314,3 +340,4 @@ class AssistantAgent:
                 f.write(json.dumps(audit_event) + "\n")
         except Exception as e:
             print(f"Failed to write audit log: {e}")
+

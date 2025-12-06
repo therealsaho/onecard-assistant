@@ -6,7 +6,7 @@ import os
 from config.llm_settings import USE_REAL_LLM, GOOGLE_API_KEY, GEMINI_MODEL_NAME
 
 try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
@@ -31,7 +31,11 @@ class GeminiLLMClient:
                     model=GEMINI_MODEL_NAME,
                     temperature=0.0,
                     google_api_key=GOOGLE_API_KEY,
-                    convert_system_message_to_human=True # Sometimes needed for older LC versions, safe to keep
+                    convert_system_message_to_human=True 
+                )
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/text-embedding-004", 
+                    google_api_key=GOOGLE_API_KEY
                 )
 
     def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -60,3 +64,17 @@ class GeminiLLMClient:
             return response.content
         except Exception as e:
             return f"Error calling Gemini: {str(e)}"
+
+    def embed(self, text: str) -> list[float]:
+        """
+        Generates embeddings for the input text.
+        """
+        if not self.real_mode:
+            # Should not be called in mock mode if logic is correct, but safe fallback
+            return [0.0] * 768
+            
+        try:
+            return self.embeddings.embed_query(text)
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            return [0.0] * 768

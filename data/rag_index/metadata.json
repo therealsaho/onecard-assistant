@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "passages": [
+    {
+      "chunk_id": 0,
+      "text": "OneCard is a premium metal credit card.\nYou earn 5x reward points on top 2 categories of spend.\nForex markup is 1% which is one of the lowest in the market.\nYou can block your card instantly via the app if it is lost or stolen.\nTo dispute a transaction, go to the transaction details and tap 'Dispute'.\nThere are no annual fees for the lifetime free variant.\nLate payment charges are 2.5% of the outstanding amount.\nYou can redeem points for cash credit or merchandise.\nContact support at 1800-ONECARD for any issues.\nThe interest-free period is up to 48 days.",
+      "source": "knowledge_base.txt",
+      "line_no": 1,
+      "preview": "OneCard is a premium metal credit card.\nYou earn 5x reward points on top 2 categories of spend.\nForex markup is 1% which"
+    }
+  ]
+}

@@ -59,4 +59,5 @@ RAG_PROMPT = """Answer the user's question using ONLY the provided context from 
 **Instructions:**
 1.  If the answer is found in the context, provide it clearly.
 2.  ALWAYS cite the source in the format: "Policy source: knowledge_base.txt (line X)".
-3.  If the answer is NOT in the context, state: "I cannot find this information in the official policy documents." """
+3.  If the answer is NOT in the context, state: "I cannot find this information in the official policy documents."
+4.  Do not hallucinate policy numbers or fees. Use only the provided chunks."""

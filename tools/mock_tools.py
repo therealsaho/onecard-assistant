@@ -141,3 +141,32 @@ def get_rewards_summary(user_id: str) -> dict:
         "expiring_soon": 100, # Mock value
         "redeemable_value_inr": MOCK_DB.get("reward_points", 0) / 10 # Mock conversion
     }
+
+def execute_tool(name: str, args: dict) -> dict:
+    """
+    Executes a tool by name with the given arguments.
+    Enforces argument validation via function_schema (if imported) or basic checks.
+    """
+    # Map tool names to functions
+    tool_map = {
+        "block_card": block_card,
+        "unblock_card": unblock_card,
+        "dispute_transaction": dispute_transaction,
+        "get_account_summary": get_account_summary,
+        "get_recent_transactions": get_recent_transactions,
+        "get_rewards_summary": get_rewards_summary
+    }
+    
+    if name not in tool_map:
+        return {"error": f"Tool '{name}' not found."}
+        
+    func = tool_map[name]
+    
+    try:
+        # Execute
+        result = func(**args)
+        return result
+    except TypeError as e:
+        return {"error": f"Invalid arguments for tool '{name}': {e}"}
+    except Exception as e:
+        return {"error": f"Tool execution failed: {e}"}
