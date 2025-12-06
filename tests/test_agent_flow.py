@@ -32,7 +32,7 @@ def test_demo_flow_rag():
     session_state = {}
     
     response = agent.handle_turn("12345", "What's the forex markup?", session_state)
-    assert "forex markup fee is 1%" in response["response_text"]
+    assert "Forex markup fee: 1%" in response["response_text"]
     assert "Source: knowledge_base.txt" in response["response_text"]
 
 def test_demo_flow_action_block():
@@ -45,7 +45,7 @@ def test_demo_flow_action_block():
     
     # 1. Request
     response1 = agent.handle_turn("12345", "Block my card", session_state)
-    assert "Are you sure" in response1["response_text"]
+    assert "You are about to" in response1["response_text"]
     assert session_state["pending_action"]["action_type"] == "block_card"
     
     # 2. Confirm

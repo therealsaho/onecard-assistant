@@ -9,7 +9,7 @@ def test_agent_info_turn():
     session_state = {}
     response = agent.handle_turn("12345", "What is OneCard's forex markup?", session_state)
     
-    assert "forex markup fee is 1%" in response["response_text"]
+    assert "Forex markup fee: 1%" in response["response_text"]
     assert "Source: knowledge_base.txt" in response["response_text"]
     assert response["tool_output"] is None
     assert session_state.get("pending_action") is None
@@ -20,7 +20,7 @@ def test_agent_action_happy_path():
     
     # 1. Request Action
     response1 = agent.handle_turn("12345", "Block my card", session_state)
-    assert "Are you sure" in response1["response_text"]
+    assert "You are about to" in response1["response_text"]
     assert "YES" in response1["response_text"]
     assert session_state.get("pending_action") is not None
     assert session_state["pending_action"]["action_type"] == "block_card"
@@ -49,7 +49,7 @@ def test_agent_otp_failure():
     
     # 1. Request Unblock (Action)
     response1 = agent.handle_turn("12345", "Unblock my card", session_state)
-    assert "Are you sure" in response1["response_text"]
+    assert "You are about to" in response1["response_text"]
     
     # 2. Confirm (Simulating flow where confirmation triggers tool)
     # Note: In our prototype agent.py, unblock_card uses hardcoded "123456" for success.
