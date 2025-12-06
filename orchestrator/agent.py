@@ -16,6 +16,7 @@ from orchestrator.prompts import (
     RAG_PROMPT,
 )
 from tools import mock_tools
+from llm.gemini_client import GeminiLLMClient
 
 class AssistantAgent:
     """
@@ -25,7 +26,7 @@ class AssistantAgent:
     def __init__(self):
         self.router = Router()
         self.rag = RAGEngine()
-        self.use_real_llm = os.environ.get("USE_REAL_LLM", "false").lower() == "true"
+        self.llm = GeminiLLMClient()
         self.allow_local_audit = os.environ.get("ALLOW_LOCAL_AUDIT", "false").lower() == "true"
         self.audit_log_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "audit_log.jsonl"
@@ -34,22 +35,25 @@ class AssistantAgent:
     def handle_turn(self, user_id: str, user_message: str, session_state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Processes a single user turn.
-        
-        Args:
-            user_id: The authenticated user ID.
-            user_message: The user's input message.
-            session_state: The current session state dictionary (mutable).
-            
-        Returns:
-            A dictionary containing 'response_text', 'tool_output', 'debug_info'.
         """
-        debug_info = {}
+        debug_info = {
+            "llm_mode": "GEMINI FLASH" if self.llm.real_mode else "MOCK",
+            "llm_input_preview": "",
+            "llm_output_preview": "",
+            "confirmation_checked": False,
+            "confirmation_result": None
+        }
         
-        # 1. Check for Pending Confirmation
-        if session_state.get("pending_action"):
-            return self._handle_confirmation(user_id, user_message, session_state)
+        # 0. Check for OTP Input
+        if session_state.get("awaiting_otp"):
+            return self._handle_otp(user_id, user_message, session_state, debug_info)
 
-        # 2. Router Classification
+        # 1. Check for Pending Confirmation FIRST
+        if session_state.get("pending_action"):
+            debug_info["confirmation_checked"] = True
+            return self._handle_confirmation(user_id, user_message, session_state, debug_info)
+
+        # 2. Router Classification (Only if no pending action)
         classification = self.router.classify(user_message)
         debug_info["classification"] = classification
         
@@ -71,48 +75,41 @@ class AssistantAgent:
                 "debug_info": debug_info
             }
 
-    def _handle_confirmation(self, user_id: str, user_message: str, session_state: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_confirmation(self, user_id: str, user_message: str, session_state: Dict[str, Any], debug_info: Dict[str, Any]) -> Dict[str, Any]:
         """Handles the confirmation logic for pending actions."""
         pending_action = session_state["pending_action"]
-        debug_info = {"pending_action": pending_action}
+        debug_info["pending_action"] = pending_action
         
-        # Strict YES check: single token, case-insensitive
-        is_confirmed = user_message.strip().upper() == "YES"
+        # Strict YES check: single token, case-insensitive, no extra chars
+        msg = user_message.strip()
+        is_confirmed = (msg.upper() == "YES") and (len(msg.split()) == 1)
         
         if is_confirmed:
-            # Execute Action
+            debug_info["confirmation_result"] = "accepted"
+            
             action_type = pending_action["action_type"]
+            
+            # OTP Gating for sensitive actions
+            if action_type in ["block_card", "unblock_card"]:
+                pending_action["requires_otp"] = True
+                pending_action["otp_attempts"] = 0
+                session_state["awaiting_otp"] = True
+                
+                return {
+                    "response_text": "A 6-digit OTP is required to proceed with this action. Please enter the 6-digit OTP now.",
+                    "tool_output": None,
+                    "debug_info": debug_info
+                }
+
+            # Execute Action (Non-OTP)
             tool_func = getattr(mock_tools, action_type)
             
-            # Map arguments (Mock logic: simple mapping)
+            # Map arguments (Mock logic)
             kwargs = {"user_id": user_id}
             if action_type == "block_card":
                 kwargs["reason"] = "User Request"
             elif action_type == "unblock_card":
-                # In a real app, we'd ask for OTP. For prototype, we assume user provided it or we simulate it.
-                # But wait, the prompt says "unblock_card(user_id, otp)". 
-                # The user flow for unblock usually involves asking for OTP.
-                # For this simplified prototype, if the user said "Unblock my card", we asked for confirmation.
-                # If they say YES, we might need to ask for OTP next?
-                # Or we can assume the prototype flow simplifies this.
-                # Let's look at the requirements: "unblock_card(user_id, otp) — precondition: OTP must equal '123456' in prototype."
-                # If we just call it with a dummy OTP it will fail if not 123456.
-                # Let's assume for the "Action turn" we are just doing block_card which needs confirmation.
-                # For unblock, the user might have provided OTP in the message? 
-                # The router is simple. 
-                # Let's stick to the prompt requirement: "If the user replies with YES... call the requested mock tool".
-                # For unblock, we might need to hardcode a valid OTP for the happy path test or handle failure.
-                # Let's pass a placeholder OTP if needed, or maybe the user message contained it?
-                # Actually, for unblock, the router might classify "Unblock my card" -> action.
-                # Then we ask confirm. Then YES. Then we call unblock_card.
-                # If we call it without OTP, it fails.
-                # Let's just pass "123456" for the happy path in this prototype if it's unblock, 
-                # OR better, let's just let it fail if no OTP is collected.
-                # BUT, the prompt says "unblock_card(user_id, otp)".
-                # Let's use a default OTP for the prototype to show success if the user didn't provide one, 
-                # or maybe just "123456" to demonstrate the tool working.
-                if action_type == "unblock_card":
-                    kwargs["otp"] = "123456" # Magic OTP for prototype demo
+                kwargs["otp"] = "123456" # Magic OTP for prototype demo
             elif action_type == "dispute_transaction":
                 kwargs["tx_id"] = "t1" # Mock
                 kwargs["reason"] = "User Request"
@@ -126,13 +123,33 @@ class AssistantAgent:
             # Clear state
             session_state["pending_action"] = None
             
+            # Generate Response (optionally use LLM)
+            if self.llm.real_mode:
+                prompt = f"The user confirmed the action '{action_type}'. The tool returned: {json.dumps(result)}. Summarize this for the user."
+                response_text = self.llm.generate(SYSTEM_PROMPT, prompt)
+                self._update_debug_llm(debug_info, prompt, response_text)
+            else:
+                response_text = f"Action confirmed. {result.get('message', 'Success')}"
+
             return {
-                "response_text": f"Action confirmed. {result.get('message', 'Success')}",
+                "response_text": response_text,
                 "tool_output": result,
                 "debug_info": debug_info
             }
         else:
-            # Cancel Action
+            # Cancel Action - Strict confirmation failed
+            debug_info["confirmation_result"] = "cancelled"
+            
+            # Log Audit for Cancellation
+            if self.allow_local_audit:
+                self._log_audit_event({
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "user_id": user_id,
+                    "action": pending_action["action_type"],
+                    "status": "CANCELLED",
+                    "reason": "User did not confirm with strict YES"
+                })
+
             session_state["pending_action"] = None
             return {
                 "response_text": "Action cancelled. You can request it again if needed.",
@@ -140,12 +157,83 @@ class AssistantAgent:
                 "debug_info": debug_info
             }
 
+    def _handle_otp(self, user_id: str, user_message: str, session_state: Dict[str, Any], debug_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Handles OTP verification."""
+        pending_action = session_state["pending_action"]
+        otp_msg = user_message.strip()
+        
+        # Validate OTP
+        is_valid = otp_msg.isdigit() and len(otp_msg) == 6 and otp_msg == "123456"
+        
+        if is_valid:
+            # Execute Action
+            action_type = pending_action["action_type"]
+            tool_func = getattr(mock_tools, action_type)
+            
+            # Map arguments
+            kwargs = {"user_id": user_id}
+            if action_type == "block_card":
+                kwargs["reason"] = "User Request"
+            elif action_type == "unblock_card":
+                kwargs["otp"] = "123456"
+                
+            result = tool_func(**kwargs)
+            
+            # Add OTP metadata to audit
+            if "audit_event" in result:
+                result["audit_event"]["otp_verified"] = True
+                result["audit_event"]["otp_attempts"] = pending_action["otp_attempts"]
+                if self.allow_local_audit:
+                    self._log_audit_event(result["audit_event"])
+            
+            # Clear state
+            session_state["pending_action"] = None
+            session_state["awaiting_otp"] = False
+            
+            return {
+                "response_text": f"OTP Verified. {result.get('message', 'Success')}",
+                "tool_output": result,
+                "debug_info": debug_info
+            }
+        else:
+            # Invalid OTP
+            pending_action["otp_attempts"] += 1
+            attempts = pending_action["otp_attempts"]
+            
+            if attempts >= 3:
+                # Cancel Action
+                if self.allow_local_audit:
+                    self._log_audit_event({
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "user_id": user_id,
+                        "action": pending_action["action_type"],
+                        "status": "CANCELLED",
+                        "reason": "too_many_otp_attempts",
+                        "otp_verified": False,
+                        "otp_attempts": attempts
+                    })
+                
+                session_state["pending_action"] = None
+                session_state["awaiting_otp"] = False
+                
+                return {
+                    "response_text": "OTP verification failed. The action has been cancelled for your safety. Please contact support at 1800-XXX-XXXX to re-initiate.",
+                    "tool_output": None,
+                    "debug_info": debug_info
+                }
+            else:
+                # Retry
+                remaining = 3 - attempts
+                return {
+                    "response_text": f"Invalid OTP. Please enter the 6-digit OTP sent to your registered phone. Attempts left: {remaining}.",
+                    "tool_output": None,
+                    "debug_info": debug_info
+                }
+
     def _handle_action_intent(self, user_id: str, classification: Dict[str, Any], session_state: Dict[str, Any], debug_info: Dict[str, Any]) -> Dict[str, Any]:
         """Handles action intents by initiating confirmation."""
         action_type = classification["action_type"]
         
-        # Some actions might be info-like (get_account_summary), check router logic
-        # The router classifies get_account_summary as 'info' usually, but if it came through as action:
         if action_type in ["get_account_summary", "get_recent_transactions", "get_rewards_summary"]:
              return self._handle_info_intent(user_id, "", action_type, debug_info)
 
@@ -153,12 +241,19 @@ class AssistantAgent:
         session_state["pending_action"] = classification
         
         # Generate Confirmation Prompt
-        # We use the template from prompts.py
-        action_desc = action_type.replace("_", " ") # simple formatter
-        prompt = CONFIRMATION_PROMPT.replace("[ACTION_DESCRIPTION]", action_desc).replace("[user_id]", user_id)
+        action_desc = action_type.replace("_", " ")
+        
+        if self.llm.real_mode:
+            # Use LLM to generate confirmation prompt, but MUST include the strict instruction
+            context = f"User wants to {action_desc} for account {user_id}. Generate a confirmation request using the exact template provided in the system prompt."
+            response_text = self.llm.generate(CONFIRMATION_PROMPT, context)
+            self._update_debug_llm(debug_info, context, response_text)
+        else:
+            # Deterministic Template
+            response_text = CONFIRMATION_PROMPT.replace("[ACTION_DESCRIPTION]", action_desc).replace("[user_id]", user_id)
         
         return {
-            "response_text": prompt,
+            "response_text": response_text,
             "tool_output": None,
             "debug_info": debug_info
         }
@@ -167,12 +262,16 @@ class AssistantAgent:
         """Handles info intents (Tools or RAG)."""
         
         if action_type:
-            # It's a read-only tool
+            # Read-only tool
             tool_func = getattr(mock_tools, action_type)
             result = tool_func(user_id)
             
-            # Mock LLM response generation
-            response_text = self._generate_response(user_message, tool_result=result)
+            if self.llm.real_mode:
+                prompt = f"User asked: '{user_message}'. Tool output: {json.dumps(result)}. Provide a helpful answer."
+                response_text = self.llm.generate(SYSTEM_PROMPT, prompt)
+                self._update_debug_llm(debug_info, prompt, response_text)
+            else:
+                response_text = f"Here is the information you requested:\n\n```json\n{json.dumps(result, indent=2)}\n```"
             
             return {
                 "response_text": response_text,
@@ -184,8 +283,19 @@ class AssistantAgent:
             results = self.rag.search(user_message)
             debug_info["rag_results"] = results
             
-            # Mock LLM response generation
-            response_text = self._generate_response(user_message, rag_context=results)
+            if self.llm.real_mode:
+                # RAG Prompt
+                context_str = "\n\n".join([f"Source: {r['source']} (Line {r['line_no']})\nContent: {r['text']}" for r in results])
+                prompt = RAG_PROMPT.replace("{context_chunks}", context_str).replace("{user_query}", user_message)
+                response_text = self.llm.generate(SYSTEM_PROMPT, prompt) # Passing SYSTEM_PROMPT as system, and RAG prompt as user message
+                self._update_debug_llm(debug_info, prompt, response_text)
+            else:
+                # Mock Template
+                if not results:
+                    response_text = "I couldn't find specific policy information regarding that in my knowledge base."
+                else:
+                    top_result = results[0]
+                    response_text = f"{top_result['text']}\n\n(Source: {top_result['source']}, line {top_result['line_no']})"
             
             return {
                 "response_text": response_text,
@@ -193,42 +303,9 @@ class AssistantAgent:
                 "debug_info": debug_info
             }
 
-    def _generate_response(self, user_message: str, tool_result: Any = None, rag_context: Any = None) -> str:
-        """
-        Generates a response using Mock LLM (template) or Real LLM.
-        """
-        if self.use_real_llm:
-            return self._llm_call(user_message, tool_result, rag_context)
-        else:
-            return self._mock_llm_response(user_message, tool_result, rag_context)
-
-    def _mock_llm_response(self, user_message: str, tool_result: Any = None, rag_context: Any = None) -> str:
-        """Deterministic mock response generation."""
-        if tool_result:
-            return f"Here is the information you requested:\n\n```json\n{json.dumps(tool_result, indent=2)}\n```"
-        
-        if rag_context:
-            if not rag_context:
-                return "I couldn't find specific policy information regarding that in my knowledge base."
-            
-            top_result = rag_context[0]
-            return f"{top_result['text']}\n\n(Source: {top_result['source']}, line {top_result['line_no']})"
-            
-        return "I processed your request."
-
-    def _llm_call(self, user_message: str, tool_result: Any = None, rag_context: Any = None) -> str:
-        """
-        Adapter for Real LLM call.
-        Only runs if USE_REAL_LLM=true and API key is present.
-        """
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            return "Error: Real LLM mode enabled but OPENAI_API_KEY not found."
-            
-        # Placeholder for real implementation
-        # In a real scenario, we would use openai or langchain here.
-        # For this prototype, we just return a string saying we would have called it.
-        return f"[Real LLM Response Placeholder] processed: {user_message}"
+    def _update_debug_llm(self, debug_info, input_text, output_text):
+        debug_info["llm_input_preview"] = input_text[:100] + "..."
+        debug_info["llm_output_preview"] = output_text[:100] + "..."
 
     def _log_audit_event(self, audit_event: Dict[str, Any]):
         """Logs audit event to local file if enabled."""

@@ -1,0 +1,60 @@
+/* fixed_mic.css - anchors the mic control to the bottom of the viewport */
+.onecard-fixed-mic-wrapper {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    display: flex;
+    justify-content: center;
+    z-index: 9999;
+    /* high so it stays above message list but below modals */
+    pointer-events: none;
+    /* wrapper non-interactive except the inner control */
+}
+
+.onecard-fixed-mic {
+    pointer-events: auto;
+    /* enable clicks inside the control */
+    width: min(960px, calc(100% - 48px));
+    background-color: rgba(24, 24, 26, 0.98);
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(6px);
+}
+
+/* layout inside the mic control to match chat input */
+.onecard-fixed-mic .mic-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* make the record waveform area expand */
+.onecard-fixed-mic .mic-wave {
+    flex: 1 1 auto;
+    min-width: 120px;
+}
+
+/* small responsive adjustments for phones */
+@media (max-width: 640px) {
+    .onecard-fixed-mic {
+        width: calc(100% - 24px);
+        padding: 8px 10px;
+        bottom: 8px;
+    }
+
+    .onecard-fixed-mic .mic-wave {
+        min-width: 80px;
+    }
+}
+
+/* Target the Streamlit Audio Input Widget to apply fixed styles */
+/* This is a best-effort attempt to style the native widget if we can't wrap it perfectly */
+/* We will try to wrap it in a div with the class .onecard-fixed-mic-wrapper in app.py */
+/* But if that fails, we might need to target data-testid="stAudioInput" directly */
+
+/* div[data-testid="stAudioInput"] {
+    We might need to override some default Streamlit styles if we want it to look exactly like the design
+} */

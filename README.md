@@ -5,7 +5,14 @@
 **Value:** Instant, accurate answers and actions via a chat interface.
 
 ## How to run
-*(Placeholder: Exact commands to be filled later)*
+
+### Audio Configuration
+- `STT_PROVIDER`: `mock` (default) or `whisper`
+- `TTS_PROVIDER`: `mock` (default) or `gtts`
+
+### Running
+1. Install dependencies: `pip install -r requirements.txt`
+2. Run the app: `python -m streamlit run ui/app.py`
 
 ## Demo Flows
 1. **"Why is my bill high?"** - Analyze statement and explain charges.
