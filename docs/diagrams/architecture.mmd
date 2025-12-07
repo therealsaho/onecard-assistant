@@ -1,42 +1,97 @@
-graph TD
-    User((User)) -->|HTTP/WebSocket| APIGateway[API Gateway / Load Balancer]
-    
-    subgraph "Presentation Layer"
-        Web[Web Client (Streamlit)]
-        Mobile[Mobile App (React Native)]
-        WhatsApp[WhatsApp Connector]
+flowchart TB
+  %% Presentation Layer
+  subgraph Presentation["Presentation Layer"]
+    U[("User")]
+    Web["Web Client — Streamlit"]
+    Mobile["Mobile App — React Native"]
+    WhatsApp["WhatsApp Connector (Webhook)"]
+  end
+
+  %% Application Layer
+  subgraph App["Application Layer — OneCard Assistant"]
+    APIGW["API Gateway / Load Balancer\n(protocols: HTTP, WebSocket, Webhook)"]
+    API["FastAPI Service\n(endpoints: /v1/sessions, /v1/messages, /v1/audio)"]
+
+    subgraph Orch["Orchestrator"]
+      Agent["Assistant Agent (State Machine)"]
+      Router["LLM Router (Intent Classifier)"]
+      RAG["RAG Engine (Retriever + Synthesizer)"]
+      Action["Action Executor (Tool Invoker)"]
+      LLMClient["LLM Client — Gemini (external)"]
     end
-    
-    Web --> APIGateway
-    Mobile --> APIGateway
-    WhatsApp --> APIGateway
-    
-    subgraph "Application Layer (OneCard Assistant)"
-        APIGateway -->|REST| API[FastAPI Service]
-        
-        subgraph "Orchestrator"
-            API --> Agent[Assistant Agent]
-            Agent --> Router[LLM Router]
-            Agent --> RAG[RAG Engine]
-            Agent --> Action[Action Executor]
-            
-            Router -->|Classify| LLM[LLM Client (Gemini)]
-            RAG -->|Embed/Search| LLM
-            Action -->|Tool Call| LLM
-        end
-        
-        subgraph "Adapters"
-            API --> STT[STT Adapter (Google/Whisper)]
-            API --> TTS[TTS Adapter (GTTS/ElevenLabs)]
-        end
+
+    subgraph Adapters["Adapters (pluggable)"]
+      STT["STT Adapter (Google / Whisper)\n(audio -> text)"]
+      TTS["TTS Adapter (gTTS / ElevenLabs)\ntext -> audio"]
     end
-    
-    subgraph "Data Layer"
-        RAG -->|Retrieve| VectorDB[(Vector Store / Index)]
-        Action -->|Read/Write| MockDB[(Mock Transaction DB)]
-        Agent -->|State| SessionStore[(Redis / In-Memory)]
-    end
-    
-    subgraph "Observability"
-        Agent -->|Log| Audit[Audit Logger]
-    end
+  end
+
+  %% Data & Observability
+  subgraph Data["Data Layer"]
+    VectorDB[("Vector Store / Index")]
+    MockDB[("Mock Transaction DB (json)")]
+    SessionStore[("Session Store — Redis / In-Memory")]
+  end
+
+  subgraph Obs["Observability & Audit"]
+    Audit["Audit Logger / Audit Trail"]
+    Metrics["Metrics / Tracing"]
+  end
+
+  %% Presentation -> API Gateway
+  U -->|HTTP / WebSocket| APIGW
+  Web --> APIGW
+  Mobile --> APIGW
+  WhatsApp -->|Webhook (Twilio/Meta)| APIGW
+
+  %% API Gateway -> API
+  APIGW -->|REST / WS| API
+
+  %% Audio inbound flow (explicit)
+  API -->|audio blob (POST /v1/audio)| STT
+  STT -->|transcript| API
+  API -->|text payload| Agent
+
+  %% Text inbound flow
+  API -->|text payload (POST /v1/messages)| Agent
+
+  %% Agent orchestration
+  Agent -->|classify intent| Router
+  Router -->|info intent| RAG
+  Router -->|action intent| Action
+  Router -->|ambiguous| Agent
+
+  %% RAG internals
+  RAG -->|search| VectorDB
+  RAG -->|context + prompt| LLMClient
+  LLMClient -->|response| RAG
+  RAG -->|answer| Agent
+
+  %% Action internals
+  Action -->|tool-schema validation| LLMClient
+  Action -->|read/write| MockDB
+  Action -->|action result| Agent
+
+  %% LLM client as external dependency
+  Router -->|few-shot classify| LLMClient
+
+  %% Agent state & outputs
+  Agent -->|state read/write| SessionStore
+  Agent -->|reply (text)| API
+  API -->|optional audio| TTS
+  TTS -->|audio file| API
+  API -->|response (text + audio URL)| APIGW
+
+  %% Observability
+  API -->|access logs| Audit
+  Agent -->|action logs| Audit
+  Action -->|audit events| Audit
+  API -->|metrics/traces| Metrics
+  Agent -->|metrics/traces| Metrics
+
+  %% Failure / fallback annotations (notes)
+  classDef note fill:#f9f9f9,stroke:#bbb,stroke-width:1px;
+  note1["Note: LLMClient = external managed service. Fallbacks: retry, mock-mode, canned-response"]:::note
+  note2["Note: Confirmation flow enforced for destructive actions (Action Executor requires explicit confirmation)"]:::note
+  note1 -.-> LLMClient
+  note2 -.-> Action

@@ -30,11 +30,11 @@
 **User**: "Block my card"
 **Expected**:
 1.  Agent asks: "Are you sure you want to block your card immediately? Reply with the single word **YES**..."
-2.  UI shows "⚠️ Confirmation Required".
+2.  UI shows "Confirmation Required".
 **User**: "YES"
 **Expected**:
 1.  Agent confirms: "Action confirmed. Card blocked successfully."
-2.  UI shows "✅ Audit Logged".
+2.  UI shows "Audit Logged".
 3.  Debug panel shows audit event.
 
 ### Flow 4: Action Cancellation (Optional)
