@@ -1,0 +1,42 @@
+graph TD
+    User((User)) -->|HTTP/WebSocket| APIGateway[API Gateway / Load Balancer]
+    
+    subgraph "Presentation Layer"
+        Web[Web Client (Streamlit)]
+        Mobile[Mobile App (React Native)]
+        WhatsApp[WhatsApp Connector]
+    end
+    
+    Web --> APIGateway
+    Mobile --> APIGateway
+    WhatsApp --> APIGateway
+    
+    subgraph "Application Layer (OneCard Assistant)"
+        APIGateway -->|REST| API[FastAPI Service]
+        
+        subgraph "Orchestrator"
+            API --> Agent[Assistant Agent]
+            Agent --> Router[LLM Router]
+            Agent --> RAG[RAG Engine]
+            Agent --> Action[Action Executor]
+            
+            Router -->|Classify| LLM[LLM Client (Gemini)]
+            RAG -->|Embed/Search| LLM
+            Action -->|Tool Call| LLM
+        end
+        
+        subgraph "Adapters"
+            API --> STT[STT Adapter (Google/Whisper)]
+            API --> TTS[TTS Adapter (GTTS/ElevenLabs)]
+        end
+    end
+    
+    subgraph "Data Layer"
+        RAG -->|Retrieve| VectorDB[(Vector Store / Index)]
+        Action -->|Read/Write| MockDB[(Mock Transaction DB)]
+        Agent -->|State| SessionStore[(Redis / In-Memory)]
+    end
+    
+    subgraph "Observability"
+        Agent -->|Log| Audit[Audit Logger]
+    end
