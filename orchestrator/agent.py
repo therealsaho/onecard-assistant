@@ -7,7 +7,7 @@ import json
 import datetime
 from typing import Dict, Any, Optional
 
-from orchestrator.router import Router
+from orchestrator.llm_router import LLMRouter as Router
 from orchestrator.embedding_rag import EmbeddingRAG
 from orchestrator.prompts import (
     SYSTEM_PROMPT,

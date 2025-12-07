@@ -22,7 +22,7 @@ class EmbeddingRAG:
     RAG engine using embeddings for semantic retrieval.
     """
     
-    def __init__(self, kb_path: str = "knowledge_base.txt", index_dir: str = RAG_INDEX_DIR):
+    def __init__(self, kb_path: str = os.path.join("data", "knowledge_base.txt"), index_dir: str = RAG_INDEX_DIR):
         self.kb_path = kb_path
         self.index_dir = index_dir
         self.passages = []

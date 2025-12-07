@@ -1,0 +1,198 @@
+{
+  "timestamp": "20251207-125116",
+  "actions": [
+    {
+      "action": "DELETE",
+      "path": "knowledge_base.txt",
+      "checksum": "bd1b8f6a43986efe54ede44ba224fc0853e1d426306d0a4da13326b00ade6679",
+      "status": "Ready"
+    },
+    {
+      "action": "DELETE",
+      "path": "orchestrator/rag_engine.py",
+      "checksum": "50df90d4d2eec25f8372e6be46abb8cd4e159d2588253182bffb543528362bbb",
+      "status": "Ready"
+    },
+    {
+      "action": "DELETE",
+      "path": "orchestrator/audit_log.jsonl",
+      "checksum": "cfbf938ede2df5d5c6508e62875b5a0037b1857ade8fb5bf1940ca2651696e5a",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "manual_verify_api.py",
+      "target": "deprecated\\manual_verify_api.py",
+      "checksum": "d2840ec6d948f0993f29d95df9f1a313f5472ed50b06b8fc262e9777a4ec900d",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "tools_contracts.md",
+      "target": "deprecated\\tools_contracts.md",
+      "checksum": "111fe7065077835801599c6e834bfb467618a8c988015ec1c1dce16e9c547be7",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "docs/audio_integration.md",
+      "target": "deprecated\\docs/audio_integration.md",
+      "checksum": "4a02b5de5110cc7e98ba3e451492225e7c808077c9e42f28c46e70bf95fd20cf",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/acceptance_checklist.md",
+      "target": "deprecated\\orchestrator/acceptance_checklist.md",
+      "checksum": "a465ffec9e74262fc07c3a7c753caac63d8bea1880f4169f1b42014f0d725c72",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/agent_flow.md",
+      "target": "deprecated\\orchestrator/agent_flow.md",
+      "checksum": "a438b287328f81fc630e2db460331d0fbd3752ba14ccaa9bda9957a2582fea97",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/agent_tests.py",
+      "target": "deprecated\\orchestrator/agent_tests.py",
+      "checksum": "542e00772e892518960722b5506ca9c30b8e3281f65e20c1de8d2bcc84e12f2a",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/llm_router.md",
+      "target": "deprecated\\orchestrator/llm_router.md",
+      "checksum": "afbfb56b98725af3ff24bfe0438aff2b673a940f9de46ca7a77f2fbf4c8b1135",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/system_prompts.md",
+      "target": "deprecated\\orchestrator/system_prompts.md",
+      "checksum": "49c7ce5c923682276d6625cfe7df4cbf3af96584a08b3da6c75a963a1180e613",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/test_cases.md",
+      "target": "deprecated\\orchestrator/test_cases.md",
+      "checksum": "e1438cb99422ef5799d6b3944985de64c0c873db6dba6e687135142f6a3b4570",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "orchestrator/tool_descriptions.md",
+      "target": "deprecated\\orchestrator/tool_descriptions.md",
+      "checksum": "5de078f37dabd55393726f09fb576f4ad841c5bc8d7915eaf30a6fad64ba91a7",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/list_models.py",
+      "target": "deprecated\\scripts/list_models.py",
+      "checksum": "2a05bf0e3b717e618ea403fd2fad1d01c8ad5e265c3a2115be4c69f0657b81cd",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/switch_to_faster_whisper.py",
+      "target": "deprecated\\scripts/switch_to_faster_whisper.py",
+      "checksum": "2c33450ee1ad0c1c4069301e18199ab04b5984db52673a8f26a7f6ef0cbef13a",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/switch_to_google.py",
+      "target": "deprecated\\scripts/switch_to_google.py",
+      "checksum": "2d7fd44896050628c821edfe9ab21380d69b32613844fa0615283c8473377001",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/switch_to_gtts.py",
+      "target": "deprecated\\scripts/switch_to_gtts.py",
+      "checksum": "6ef62b2850e1ab7ea8891ca9a53769a3b1b27bb0afc6a5dd77f6ac4c010f4fa3",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_audio_real.py",
+      "target": "deprecated\\scripts/verify_audio_real.py",
+      "checksum": "c86453f7cb708d1407186500e4b52fe75e8ac1b51ed8562025f4644c554d4061",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_confirmation.py",
+      "target": "deprecated\\scripts/verify_confirmation.py",
+      "checksum": "d382de9c31257ed8bd7a72711a00537b0400aa05b435b7274a1c99599d5a361b",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_gemini.py",
+      "target": "deprecated\\scripts/verify_gemini.py",
+      "checksum": "81586e73ef2db1ae295c7163ae04cfc06049bdc21e6cab0b459abb19767f8297",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_google_stt.py",
+      "target": "deprecated\\scripts/verify_google_stt.py",
+      "checksum": "d83b9c246b9f49fc133a6d09dc9ece95632b1ee0f208c3cea08965752779f2b9",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_gtts.py",
+      "target": "deprecated\\scripts/verify_gtts.py",
+      "checksum": "4c327394929f2544ee658d95611dc4353c5ec973497dc69b9c3c3d7d69492060",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "scripts/verify_otp.py",
+      "target": "deprecated\\scripts/verify_otp.py",
+      "checksum": "7f7aee29881a244d50f59c9d0b8a3cdf838974b6baaa20e81e4e2db3033b97cc",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "tests/verify_real_embeddings.py",
+      "target": "deprecated\\tests/verify_real_embeddings.py",
+      "checksum": "182fbd3159c9f5cc619db538aa0b9b3e4088725e2adae9eb2d7906c6e4eee4f9",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "ui/acceptance_checklist.md",
+      "target": "deprecated\\ui/acceptance_checklist.md",
+      "checksum": "9b9c5f476050cae62778f6625f136780b37c19621421d069f2cba71d40f53e20",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "ui/app_structure.md",
+      "target": "deprecated\\ui/app_structure.md",
+      "checksum": "c7a47d79b79e7a60d3b17b70080b48ec834333abe68b58d5fefaeafc4057493e",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "ui/event_flow.md",
+      "target": "deprecated\\ui/event_flow.md",
+      "checksum": "432dd9c99f3777c9533841ad269d01ab5cb6c571c29d6bcd3252dc81581b0266",
+      "status": "Ready"
+    },
+    {
+      "action": "MOVE",
+      "source": "ui/streamlit_contract.md",
+      "target": "deprecated\\ui/streamlit_contract.md",
+      "checksum": "dd14a5c4f7796c4d5e0a06af37a2f7395413610aeab283d61038d1da77de7a24",
+      "status": "Ready"
+    }
+  ]
+}

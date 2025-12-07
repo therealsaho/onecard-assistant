@@ -5,7 +5,7 @@ graph LR
     User((User)) --> Frontend[Streamlit Frontend]
     Frontend --> API[API Gateway (Text/Audio)]
     API --> Orchestrator[Orchestrator (Router / RAG / Action Module)]
-    Orchestrator --> KB[(Knowledge Base (txt))]
+    Orchestrator --> KB[(data/knowledge_base.txt)]
     Orchestrator --> DB[(Mock DB (json))]
     
     subgraph Data Layer
